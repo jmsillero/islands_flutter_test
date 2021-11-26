@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:island_counter_test/cell.dart';
 import 'package:island_counter_test/compute.dart';
+import 'package:island_counter_test/coordinate.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   // This widget is the root of your application.
   @override
@@ -31,15 +31,16 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final Compute compute = Compute(10);
+  final Compute compute = Compute(1);
   int islands = 0;
-  int n = 0;
-  List<List<Cell>> cells = [];
+  List<List<int>> cells = [];
+  TextEditingController gridSizeController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final duration = const Duration(seconds: 1);
 
   @override
   void initState() {
     cells = compute.cells;
-
     super.initState();
   }
 
@@ -53,7 +54,7 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               Padding(
-                padding: const EdgeInsets.all(36.0),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
                     const Text(
@@ -77,13 +78,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: GridView.count(
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: cells.length,
-                    children: generateCells(),
+                    children: generateGrid(),
                   )),
                 ),
-              ),
-              TextFormField(
-                onChanged: (value) => n = int.parse(value),
-                keyboardType: TextInputType.number,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -97,21 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                       child: const Text('Reordenar')),
                   ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          islands = compute.configure(n);
-                          cells = compute.cells;
-                        });
-                      },
-                      child: const Text('Configurar')),
-                  ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          islands = compute.invertCell();
-                          cells = compute.cells;
-                        });
-                      },
-                      child: const Text('Calcular')),
+                      onPressed: showForm, child: const Text('Configurar')),
                 ],
               ),
             ],
@@ -121,7 +104,62 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  generateCells() {
+  showForm() {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Center(child: Text('Configurar rejilla')),
+            content: Form(
+                key: formKey,
+                child: TextFormField(
+                  controller: gridSizeController,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        int.parse(value) < 1) {
+                      return 'La rejilla debe tener al menos una celda';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                      hintText: '10', labelText: 'Tamaño de la rejilla'),
+                )),
+            actionsAlignment: MainAxisAlignment.spaceAround,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(primary: Colors.blueGrey),
+                    onPressed: () {
+                      gridSizeController.clear();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Cancelar')),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        setState(() {
+                          islands = compute
+                              .configure(int.parse(gridSizeController.text));
+                          cells = compute.cells;
+                        });
+                        Navigator.pop(context);
+                        gridSizeController.clear();
+                      }
+                    },
+                    child: const Text('Generar')),
+              ),
+            ],
+          );
+        });
+  }
+
+  generateGrid() {
     List<Widget> widgets = [];
     for (var x = 0; x < cells.length; x++) {
       for (var y = 0; y < cells.length; y++) {
@@ -131,12 +169,14 @@ class _MyHomePageState extends State<MyHomePage> {
           child: InkWell(
             onTap: () {
               setState(() {
-                islands = compute.invertCell(cell);
+                islands = compute.invertCell(Coordinate(x, y));
+                cells = compute.cells;
               });
             },
-            child: Container(
-              color: cell.value >= 1
-                  ? Colors.primaries[cell.value % Colors.primaries.length]
+            child: AnimatedContainer(
+              duration: duration,
+              color: cell >= 1
+                  ? Colors.primaries[cell % Colors.primaries.length]
                   : Colors.blueGrey.withOpacity(.6),
             ),
           ),

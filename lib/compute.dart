@@ -1,20 +1,20 @@
 import 'dart:math';
 
-import 'package:island_counter_test/cell.dart';
+import 'package:island_counter_test/coordinate.dart';
 import 'package:island_counter_test/integer_pair.dart';
 
 class Compute {
   int n;
-  late List<List<Cell>> cells;
+  late List<List<int>> cells;
   final Random rand = Random();
 
   Compute(this.n) {
-    generateCells();
+    generateGrid(true);
   }
 
-  generateCells() {
+  generateGrid([bool isDefault = false]) {
     cells = List.generate(
-        n, (x) => List.generate(n, (y) => Cell(rand.nextInt(2), x, y)));
+        n, (x) => List.generate(n, (y) => isDefault ? 0 : rand.nextInt(2)));
   }
 
   computeNumberOfIslands() {
@@ -23,20 +23,20 @@ class Compute {
     int max = 1;
     for (var x = 0; x < n; x++) {
       for (var y = 0; y < n; y++) {
-        var cell = cells[x][y];
-        if (cell.value == 1) {
-          cell.value = ++max;
-          queue.add(cell);
+        if (cells[x][y] == 1) {
+          cells[x][y] = ++max;
+          queue.add(Coordinate(x, y));
           while (queue.isNotEmpty) {
             var firstElement = queue.removeAt(0);
+
             for (var pos in positions) {
               var xIndex = firstElement.x + pos.first;
               var yIndex = firstElement.y + pos.second;
+
               if (xIndex >= 0 && xIndex < n && yIndex >= 0 && yIndex < n) {
-                var adjacent = cells[xIndex][yIndex];
-                if (adjacent.value == 1) {
-                  adjacent.value = max;
-                  queue.add(adjacent);
+                if (cells[xIndex][yIndex] == 1) {
+                  cells[xIndex][yIndex] = max;
+                  queue.add(Coordinate(xIndex, yIndex));
                 }
               }
             }
@@ -47,25 +47,26 @@ class Compute {
     return max - 1;
   }
 
-  invertCell([Cell? cell]) {
+  invertCell([Coordinate? coordinate]) {
     cells = cells
         .map((x) => x.map((y) {
-              if (y.value != 0) {
-                y.value = 1;
+              if (y != 0) {
+                y = 1;
               }
               return y;
             }).toList())
         .toList();
 
-    if (cell != null) {
-      cells[cell.x][cell.y].value = cell.value == 0 ? 1 : 0;
+    if (coordinate != null) {
+      cells[coordinate.x][coordinate.y] =
+          cells[coordinate.x][coordinate.y] == 0 ? 1 : 0;
     }
 
     return computeNumberOfIslands();
   }
 
   reorder() {
-    generateCells();
+    generateGrid();
     return computeNumberOfIslands();
   }
 
